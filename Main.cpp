@@ -4,14 +4,13 @@
 #define input(X) if(GetAsyncKeyState(X) & 0x8000)
 
 super_engin Disp("NotUntertale", 9, 21);
-AsciiSprite soul(4, 2), spearsouth(3, 5), spearnorth(3, 5),speareast(3, 5),spearwest(3, 5);
+AsciiSprite soul(4, 2), spearsouth(3, 5), spearnorth(3, 5);
 POINT projectiles[7];
 int projectileDir[7];
 
 void gameLoop();
 
 int main() {
-    // Setup: Background, Sprites, Projectiles
     srand(time(NULL));
     for(int i = 0; i < 30; i++)
         for(int j = 0; j < 120; j++) {
@@ -41,7 +40,6 @@ int main() {
     for(int i = 0; i < 7; i++) {
         projectiles[i].x = (rand() % 38) * 3 + 3;
         projectiles[i].y = rand() % 25;
-        // direction: +1 = moving down (from top to bottom), -1 = moving up (from bottom to top)
         projectileDir[i] = (rand() % 2) ? 1 : -1;
     }
 
@@ -51,11 +49,8 @@ int main() {
 
 int x = 8, y = 8, c = 0;
 char *msg[3] = {"This is you", "Move with WASD", "Survive :)"};
-// Shut up and appreciate my absolute garbage code
 bool showspearsouth[7] = {false, false, false, false, false, false, false};
 bool showspearnorth[7] = {false, false, false, false, false, false, false};
-bool showspeareast[2] = {false, false};
-bool showspearwest[2] = {false, false};
 
 void gameLoop() {
     for(int i = 0; i < 120*30; i++) {
@@ -66,29 +61,23 @@ void gameLoop() {
     Disp.DrawSprite(soul, x, y, false);
     if(c/50 < 3) Disp.PutString(msg[c/50], x-3, y+3, false);
     else for(int i = 0; i < 7; i++) {
-        // If direction is +1, projectile moves downward (spawn from top).
         if(projectileDir[i] == 1) {
             if(showspearsouth[i]) Disp.DrawSprite(spearsouth, projectiles[i].x, projectiles[i].y, false);
-            // move down
             projectiles[i].y = (projectiles[i].y + 1) % 25;
-            // wrapped to top -> spawn a new downward spear near player's x
             if(projectiles[i].y == 0) {
                 showspearsouth[i] = true;
                 showspearnorth[i] = false;
-                projectiles[i].y = 1; // place just below top
+                projectiles[i].y = 1;
                 projectiles[i].x = ((x + (rand()%30) - 15 + 113) % 113) + 2;
             }
         }
-        // If direction is -1, projectile moves upward (spawn from bottom).
         else {
             if(showspearnorth[i]) Disp.DrawSprite(spearnorth, projectiles[i].x, projectiles[i].y, false);
-            // move up (with proper wrap)
             projectiles[i].y = (projectiles[i].y - 1 + 25) % 25;
-            // wrapped to bottom -> spawn a new upward spear near player's x
             if(projectiles[i].y == 24) {
                 showspearnorth[i] = true;
                 showspearsouth[i] = false;
-                projectiles[i].y = 23; // place just above bottom
+                projectiles[i].y = 23;
                 projectiles[i].x = ((x + (rand()%30) - 15 + 113) % 113) + 2;
             }
         }
