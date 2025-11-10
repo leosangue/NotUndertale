@@ -1,7 +1,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "super-engin.h"
-#define input(X) if(GetAsyncKeyState(X) & 0x8000)
+#define input(X) (GetAsyncKeyState(X) & 0x8000)
 
 super_engin Disp("NotUntertale", 9, 21);
 AsciiSprite soul(4, 2), spear(3, 5);
@@ -66,10 +66,10 @@ void gameLoop() {
     }
     c++;
     
-    input('A') if(x >= 4) x-=2;
-    input('D') if(x <= 112) x+=2;
-    input('W') if(y >= 2) y--;
-    input('S') if(y < 27) y++;
+    if(input('A')) if(x >= 4) x-=2;
+    if(input('D')) if(x <= 112) x+=2;
+    if(input('W')) if(y >= 2) y--;
+    if(input('S')) if(y < 27) y++;
     
     Disp.OutPut();
     Sleep(50);
