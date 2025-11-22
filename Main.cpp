@@ -1,10 +1,12 @@
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 #include "super-engin.h"
 #define input(X) (GetAsyncKeyState(X) & 0x8000)
 
 super_engin Disp("NotUntertale", 9, 21);
 AsciiSprite soul(4, 2), spear(3, 5), titleScr(92, 5), overScr(86, 7);
+AsciiSprite buttons[6] = { AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5) };
 POINT projectiles[7];
 
 void gameLoop(), titleScreen(), gameOver();
@@ -12,11 +14,11 @@ bool collides(int, int, int, int, int, int, int, int);
 int p_x = 8, p_y = 8, frameCount = 0;
 bool showspear[7] = {false, false, false, false, false, false, false};
 byte heartColors[7] = {RED, GREEN, GOLD, CYAN, VIOLET, DARK_BLUE, PURPLE};
-char *msg[6] = {
-    "This is you", // Tutorial
+const char *msg[6] = {
+    "This is you",
     "Move with WASD",
     "Survive :)",
-    "You're supposed to dodge the attacks!", // Death messages
+    "You're supposed to dodge the attacks!",
     "You must survive!",
     "Why did you just die :(",
 };
@@ -73,6 +75,44 @@ int main() {
     for(int i = 0; i < 86*7; i++)
         overScr.Colors[i] = LIGHT_GOLD;
 
+    const int bw = 20, bh = 5, spacing = 4;
+    const int numButtons = 6;
+    const char border = (char)219;
+    const char *labels[numButtons] = { " LEVEL 1 ", " LEVEL 2 ", " LEVEL 3 ", " LEVEL 4 ", " LEVEL 5 ", " LEVEL 6 " };
+    for (int b = 0; b < numButtons; ++b) {
+        AsciiSprite &btn = buttons[b];
+        for (int i = 0; i < bw * bh; ++i) {
+            btn.AsciiChars[i] = ' ';
+            btn.Colors[i] = joinColor(WHITE, DARK_GRAY);
+        }
+        for (int y = 0; y < bh; ++y) {
+            for (int x = 0; x < bw; ++x) {
+                int idx = y * bw + x;
+                if (y == 0 || y == bh-1 || x == 0 || x == bw-1) {
+                    btn.AsciiChars[idx] = border;
+                    btn.Colors[idx] = joinColor(WHITE, DARK_GRAY);
+                }
+            }
+        }
+        const char *label = labels[b];
+        int llen = (int)strlen(label);
+        int labelRow = bh/2;
+        int startX = (bw - llen) / 2;
+        if (startX < 1) startX = 1;
+        for (int i = 0; i < llen && startX + i < bw-1; ++i) {
+            int idx = labelRow * bw + (startX + i);
+            btn.AsciiChars[idx] = label[i];
+            btn.Colors[idx] = joinColor(WHITE, BLACK);
+        }
+        int leftIdx = labelRow * bw + (startX - 1);
+        int rightIdx = labelRow * bw + (startX + llen);
+        if (leftIdx >= 0 && leftIdx < bw*bh) { btn.AsciiChars[leftIdx] = '<'; btn.Colors[leftIdx] = joinColor(WHITE, BLACK); }
+        if (rightIdx >= 0 && rightIdx < bw*bh) { btn.AsciiChars[rightIdx] = '>'; btn.Colors[rightIdx] = joinColor(WHITE, BLACK); }
+    }
+    
+    
+    
+
     titleScreen();
     while(true) gameLoop();
     return 0;
@@ -94,12 +134,56 @@ void titleScreen() {
         Disp.wDisplay[i].Attributes = WHITE;
     }
     Disp.DrawSprite(titleScr, 4, 4, false);
+    const int bw = 20, bh = 5, spacing = 4;
     Disp.wDisplay[5*120+49].Char.AsciiChar = 3;
     Disp.wDisplay[5*120+49].Attributes = RED;
     Disp.OutPut();
     Sleep(1000);
-    Disp.PutString("Press enter to start!", 6, 10, false);
-    while(!input(VK_RETURN)) Disp.OutPut();
+
+    int selected = 0;
+    const int totalW = 3 * bw + 2 * spacing;
+    const int startX = (120 - totalW) / 2;
+    const int rowY1 = 12;
+    const int rowY2 = rowY1 + bh + 2;
+
+    while (true) {
+        for(int i = 0; i < 120*30; i++) {
+            Disp.wDisplay[i].Char.AsciiChar = ' ';
+            Disp.wDisplay[i].Attributes = WHITE;
+        }
+        Disp.DrawSprite(titleScr, 4, 4, false);
+
+        for (int b = 0; b < 6; ++b) {
+            AsciiSprite &btn = buttons[b];
+            for (int y = 0; y < bh; ++y) {
+                for (int x = 0; x < bw; ++x) {
+                    int idx = y * bw + x;
+                    if (y == 0 || y == bh-1 || x == 0 || x == bw-1) {
+                        btn.Colors[idx] = (b == selected) ? RED : joinColor(WHITE, DARK_GRAY);
+                    }
+                }
+            }
+            int drawX = startX + (b % 3) * (bw + spacing);
+            int drawY = (b < 3) ? rowY1 : rowY2;
+            Disp.DrawSprite(btn, drawX, drawY, false);
+        }
+
+        Disp.wDisplay[5*120+49].Char.AsciiChar = 3;
+        Disp.wDisplay[5*120+49].Attributes = RED;
+        Disp.OutPut();
+        Sleep(50);
+
+        if (input('A')) { if (selected % 3 > 0) selected--; while(input('A')) Disp.OutPut(); }
+        if (input('D')) { if (selected % 3 < 2) selected++; while(input('D')) Disp.OutPut(); }
+        if (input('W')) { if (selected >= 3) selected -= 3; while(input('W')) Disp.OutPut(); }
+        if (input('S')) { if (selected < 3) selected += 3; while(input('S')) Disp.OutPut(); }
+
+        if (input(VK_RETURN)) {
+            if (selected == 0) break; // start level 1
+            while(input(VK_RETURN)) Disp.OutPut(); // otherwise ignore until released
+        }
+        Disp.OutPut();  
+    }
 }
 
 
