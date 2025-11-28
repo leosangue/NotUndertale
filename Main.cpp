@@ -8,8 +8,11 @@ super_engin Disp("NotUntertale", 9, 21);
 AsciiSprite soul(4, 2), spear(3, 5), titleScr(92, 5), overScr(86, 7);
 AsciiSprite buttons[6] = { AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5), AsciiSprite(20,5) };
 POINT projectiles[7];
+bool inLevel = false;
 
-void gameLoop(), titleScreen(), gameOver();
+int titleScreen();
+void runLevel(int level);
+void gameOver();
 bool collides(int, int, int, int, int, int, int, int);
 int p_x = 8, p_y = 8, frameCount = 0;
 bool showspear[7] = {false, false, false, false, false, false, false};
@@ -17,7 +20,7 @@ byte heartColors[7] = {RED, GREEN, GOLD, CYAN, VIOLET, DARK_BLUE, PURPLE};
 const char *msg[6] = {
     "This is you",
     "Move with WASD",
-    "Survive :)",
+    "Dodge the attacks :)",
     "You're supposed to dodge the attacks!",
     "You must survive!",
     "Why did you just die :(",
@@ -113,8 +116,10 @@ int main() {
     
     
 
-    titleScreen();
-    while(true) gameLoop();
+    while (true) {
+        int sel = titleScreen();
+        runLevel(sel);
+    }
     return 0;
 }
 
@@ -127,8 +132,8 @@ bool collides(int x_1, int w_1, int y_1, int h_1, int x_2, int w_2, int y_2, int
   }
   return false;
 }
-
-void titleScreen() {
+ 
+int titleScreen() {
     for(int i = 0; i < 120*30; i++) {
         Disp.wDisplay[i].Char.AsciiChar = ' ';
         Disp.wDisplay[i].Attributes = WHITE;
@@ -151,7 +156,7 @@ void titleScreen() {
             Disp.wDisplay[i].Char.AsciiChar = ' ';
             Disp.wDisplay[i].Attributes = WHITE;
         }
-        Disp.DrawSprite(titleScr, 4, 4, false);
+        Disp.DrawSprite(titleScr, 12, 4, false);
 
         for (int b = 0; b < 6; ++b) {
             AsciiSprite &btn = buttons[b];
@@ -168,8 +173,9 @@ void titleScreen() {
             Disp.DrawSprite(btn, drawX, drawY, false);
         }
 
-        Disp.wDisplay[5*120+49].Char.AsciiChar = 3;
-        Disp.wDisplay[5*120+49].Attributes = RED;
+        Disp.wDisplay[5*120+57].Char.AsciiChar = 3;
+        Disp.wDisplay[5*120+57].Attributes = RED;
+        Disp.PutString("Press ESC to exit", 0, 29, false);
         Disp.OutPut();
         Sleep(50);
 
@@ -179,8 +185,11 @@ void titleScreen() {
         if (input('S')) { if (selected < 3) selected += 3; while(input('S')) Disp.OutPut(); }
 
         if (input(VK_RETURN)) {
-            if (selected == 0) break; // start level 1
+            if (selected == 0) return selected; // start level 1
             while(input(VK_RETURN)) Disp.OutPut(); // otherwise ignore until released
+        }
+        if (input(VK_ESCAPE)) {
+            exit(0);
         }
         Disp.OutPut();  
     }
@@ -208,42 +217,59 @@ void gameOver() {
     Sleep(1000);
     Disp.PutString(msg[rand() % 3 + 3], 8, 12, false);
     Disp.wDisplay[12*120+6].Char.AsciiChar = 3;
-    Disp.wDisplay[12*120+6].Attributes = heartColors[rand() % 7];
+    int a=rand() % 7;
+    Disp.wDisplay[12*120+6].Attributes = heartColors[a];
+    Disp.wDisplay[14*120+6].Char.AsciiChar = 3;
+    Disp.wDisplay[14*120+6].Attributes = heartColors[a];
+    Disp.PutString("Press enter to continue", 8, 14, false);
     while(!input(VK_RETURN)) Disp.OutPut();
-    exit(0);
+    inLevel = false;
 }
 
 
-void gameLoop() {
-    for(int i = 0; i < 120*30; i++) {
-        Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
-        Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+void runLevel(int level) {
+    inLevel = true;
+    frameCount = 0;
+    p_x = 8; p_y = 8;
+    for (int i = 0; i < 7; ++i) {
+        projectiles[i].x = (rand() % 38) * 3 + 3;
+        projectiles[i].y = rand() % 25;
+        showspear[i] = false;
     }
 
-    Disp.DrawSprite(soul, p_x, p_y, false);
-    if(frameCount/50 < 3)
-        Disp.PutString(msg[frameCount/50], p_x-3, p_y+3, false);
-    else
-        for(int i = 0; i < 7; i++) {
-            if(showspear[i]) {
-                if(collides(p_x, 4, p_y, 2, projectiles[i].x, 3, projectiles[i].y, 5)) gameOver();
-                Disp.DrawSprite(spear, projectiles[i].x, projectiles[i].y, false);
-            }
-
-            projectiles[i].y = (projectiles[i].y + 1) % 25;
-            if(projectiles[i].y == 0) {
-                showspear[i] = true;
-                projectiles[i].y++;
-                projectiles[i].x = (p_x + (rand()%30) - 15) % 113 + 2;
-            }
+    while (inLevel) {
+        for(int i = 0; i < 120*30; i++) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
         }
-    frameCount++;
-    
-    if(input('A') || input(VK_LEFT)) if(p_x >= 4) p_x-=2;
-    if(input('D') || input(VK_RIGHT)) if(p_x <= 112) p_x+=2;
-    if(input('W') || input(VK_UP)) if(p_y >= 2) p_y--;
-    if(input('S') || input(VK_DOWN)) if(p_y < 27) p_y++;
-    
-    Disp.OutPut();
-    Sleep(50);
+
+        Disp.DrawSprite(soul, p_x, p_y, false);
+        if(frameCount/50 < 3)
+            Disp.PutString(msg[frameCount/50], p_x-3, p_y+3, false);
+        else
+            for(int i = 0; i < 7; i++) {
+                if(showspear[i]) {
+                    if(collides(p_x, 4, p_y, 2, projectiles[i].x, 3, projectiles[i].y, 5)) {
+                        gameOver();
+                    }
+                    Disp.DrawSprite(spear, projectiles[i].x, projectiles[i].y, false);
+                }
+
+                projectiles[i].y = (projectiles[i].y + 1) % 25;
+                if(projectiles[i].y == 0) {
+                    showspear[i] = true;
+                    projectiles[i].y++;
+                    projectiles[i].x = (p_x + (rand()%30) - 15) % 113 + 2;
+                }
+            }
+        frameCount++;
+
+        if(input('A') || input(VK_LEFT)) if(p_x >= 4) p_x-=2;
+        if(input('D') || input(VK_RIGHT)) if(p_x <= 112) p_x+=2;
+        if(input('W') || input(VK_UP)) if(p_y >= 2) p_y--;
+        if(input('S') || input(VK_DOWN)) if(p_y < 27) p_y++;
+
+        Disp.OutPut();
+        Sleep(50);
+    }
 }
