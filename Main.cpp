@@ -469,13 +469,13 @@ void runLevel1() {
                 // draw fading/false horizontal and vertical indicators for the first 15 frames of cycle
                 if(cycle % 40 < 15){
                     Disp.DrawSprite(hfalsolaser, 2, laser_y, false);
-                    Disp.DrawSprite(vfalsolaser, laser_x, 2, false);
+                    Disp.DrawSprite(vfalsolaser, laser_x, 1, false);
                 }
 
                 // after the fake indicator period, draw real lasers and perform collisions
                 if(cycle % 40 >= 10){
                     Disp.DrawSprite(hlaser, 2, laser_y, false);
-                    Disp.DrawSprite(vlaser, laser_x, 2, false);
+                    Disp.DrawSprite(vlaser, laser_x, 1, false);
                     // mark laser-active start
                     if(laserActiveStart == -1) laserActiveStart = frameCount;
                     // horizontal collision
@@ -486,8 +486,8 @@ void runLevel1() {
                             if (lives <= 0) gameOver();
                         }
                     }
-                    // vertical collision (vlaser width 6, height 28 starting at y=2)
-                    if(collides(p_x,4,p_y,2,laser_x,6,2,28)){
+                    // vertical collision (vlaser width 6, height 28 starting at y=1)
+                    if(collides(p_x,4,p_y,2,laser_x,6,1,28)){
                         if (invTimer == 0) {
                             lives--;
                             invTimer = INV_FRAMES;
@@ -923,7 +923,7 @@ void runLevel2() {
 
         frameCount++;
         minigame2Counter++;
-        Disp.OutPut(); Sleep(50);
+        Disp.OutPut(); 
     }
 
     // After Minigame 2 we will progress to Minigame 3 (final challenge)
