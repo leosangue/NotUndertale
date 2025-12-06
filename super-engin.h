@@ -27,6 +27,7 @@ enum Colors {
     CYAN = 0x0b,
     VIOLET = 0x0d,
     LIGHT_GOLD = 0x0e,
+    ORANGE=0x06
 };
 
 byte joinColor(byte bkg_C, byte frn_C) {

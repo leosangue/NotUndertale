@@ -3,9 +3,19 @@
 #include <string.h>
 #include <cstdio>
 #include <cmath>
+#include <stdexcept>
 #include "super-engin.h"
 #include <mmsystem.h>
 #define input(X) (GetAsyncKeyState(X) & 0x8000)
+
+// Track key states for detecting key release
+bool prevKeyStates[256] = {false};
+bool keyReleased(int key) {
+    bool currentState = input(key);
+    bool wasPressed = prevKeyStates[key];
+    prevKeyStates[key] = currentState;
+    return wasPressed && !currentState; // True if key was pressed last frame but not this frame
+}
 
 super_engin Disp("NotUntertale", 9, 21);
 AsciiSprite soul(4, 2), spear(3, 5), titleScr(92, 5), overScr(86, 7),hlaser(116,3),hfalsolaser(116,3),vlaser(6,28),vfalsolaser(6,28),winScr(73,7);
@@ -239,12 +249,18 @@ int main() {
     }
     while (true) {
         int sel = titleScreen();
+        // Reset key state tracking before entering a level
+        memset(prevKeyStates, false, sizeof(prevKeyStates));
         runLevel(sel);
         // After returning from the level, (re)play the title music if present
         if (GetFileAttributesA("assets/title.wav") != INVALID_FILE_ATTRIBUTES) {
             PlaySoundA("assets/title.wav", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
         }
     }
+    
+    // Cleanup before exit
+    PlaySoundA(NULL, NULL, 0);
+    system("cls");
     return 0;
 }
 
@@ -549,13 +565,13 @@ void runLevel2() {
     int invTimer = 0;
     const int INV_FRAMES = 20;
 
-    // Save existing soul colors so we can restore them when the level ends
-    const int soulSize = soul.Width * soul.Height;
+
     byte savedSoulColors[256]; // plenty of room (soul is small)
-    for (int i = 0; i < soulSize; ++i) savedSoulColors[i] = soul.Colors[i];
+    for (int i = 0; i < 5*3; ++i) savedSoulColors[i] = soul.Colors[i];
+
 
     // Make the soul blue for this level (Blue heart mode)
-    for (int i = 0; i < soulSize; ++i) soul.Colors[i] = BLUE;
+    for (int i = 0; i < 5*3; ++i) soul.Colors[i] = BLUE;
 
     // Gravity / jump variables
     float posX = (float)p_x;
@@ -789,7 +805,7 @@ void runLevel2() {
 
     // If player died inside minigame1, don't continue
     if (!inLevel) {
-        for (int i = 0; i < soulSize; ++i) soul.Colors[i] = savedSoulColors[i];
+        for (int i = 0; i < 5*3; ++i) soul.Colors[i] = savedSoulColors[i];
         return;
     }
 
@@ -922,8 +938,10 @@ void runLevel2() {
         if (input(VK_ESCAPE)) exit(0);
 
         frameCount++;
+        
         minigame2Counter++;
         Disp.OutPut(); 
+        Sleep(50);
     }
 
     // After Minigame 2 we will progress to Minigame 3 (final challenge)
@@ -950,7 +968,7 @@ void runLevel2() {
             // success -> level complete
             for (int a = 0; a < 20; ++a) { for (int i = 0; i < 120 * 30; ++i) { Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char; Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color; }  Disp.OutPut(); }            
             // restore soul colors and victory
-            for (int i = 0; i < soulSize; ++i) soul.Colors[i] = savedSoulColors[i];
+            for (int i = 0; i < 5*3; ++i) soul.Colors[i] = savedSoulColors[i];
             gameWin();
             return;
         }
@@ -1045,20 +1063,20 @@ void runLevel2() {
                     // closed: treat as full column (no gap)
                     if (collides(p_x, 4, p_y, 2, columns3[i].x, columns3[i].w, 0, DISPLAY_BOTTOM+1)) {
                         if (invTimer == 0) {
-                            lives--; invTimer = INV_FRAMES; if (lives <= 0) { for (int a = 0; a < soulSize; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); }
+                            lives--; invTimer = INV_FRAMES; if (lives <= 0) { for (int a = 0; a < 5*3; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); }
                         }
                     }
                 } else {
                     // open: normal gap collisions
                     if (collides(p_x, 4, p_y, 2, columns3[i].x, columns3[i].w, 0, dynGapY)) {
                     if (invTimer == 0) {
-                        lives--; invTimer = INV_FRAMES; if (lives <= 0) { for (int a = 0; a < soulSize; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); }
+                        lives--; invTimer = INV_FRAMES; if (lives <= 0) { for (int a = 0; a < 5*3; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); }
                     }
                 }
                     int bottomH = DISPLAY_BOTTOM - (dynGapY + columns3[i].gapSize) + 1;
                     if (bottomH > 0 && collides(p_x, 4, p_y, 2, columns3[i].x, columns3[i].w, dynGapY + columns3[i].gapSize, bottomH)) {
                     if (invTimer == 0) {
-                        lives--; invTimer = INV_FRAMES; if (lives <= 0) { for (int a = 0; a < soulSize; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); }
+                        lives--; invTimer = INV_FRAMES; if (lives <= 0) { for (int a = 0; a < 5*3; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); }
                     }
                     }
                 }
@@ -1081,16 +1099,1226 @@ void runLevel2() {
     }
 
     // End of runLevel2 - restore colors if not already restored
-    for (int i = 0; i < soulSize; ++i) soul.Colors[i] = savedSoulColors[i];
+    for (int i = 0; i < 5*3; ++i) soul.Colors[i] = savedSoulColors[i];
     return;
 }
 
 void runLevel3() {
-    // TODO: Implement Level 3 logic here. See runLevel1 for reference.
+    inLevel = true;
+    frameCount = 0;
+    
+    // Player position: fixed at center
+    p_x = 58; p_y = 14;
+    
+    int lives = 3;
+    int invTimer = 0;
+    const int INV_FRAMES = 20;
+    
+    // Create green soul sprite for this level
+    AsciiSprite greenSoul = soul;
+    byte savedSoulColors[256];
+    for (int i = 0; i < 4*2; ++i) {
+        savedSoulColors[i] = soul.Colors[i];
+        greenSoul.Colors[i] = GREEN;
+    }
+    
+    // Messages for Level 3 minigame 1
+    const char *level3Msgs[2] = {
+        "Use WASD to move the Shield",
+        "Protect yourself from arrows"
+    };
+    
+    // --- MINIGAME 1 (Shield defense): 15 seconds ---
+    const int MINIGAME1_FRAMES = 15 * 20; // 15 seconds at 20 FPS
+    const int MAX_ARROWS = 24;
+    struct Arrow { float x, y; int dir; float speed; bool active; };
+    Arrow arrows[MAX_ARROWS];
+    for (int i = 0; i < MAX_ARROWS; ++i) { arrows[i].active = false; arrows[i].speed = 0.0f; }
+    
+    int spawnCounter = 0;
+    const int SPAWN_MIN = 8;   // spawn every 0.4s minimum
+    const int SPAWN_MAX = 18;  // spawn every 0.9s maximum
+    const float VERTICAL_MIN_SPEED = 0.6f;
+    const float VERTICAL_MAX_SPEED = 0.8f;
+    const float HORIZONTAL_MIN_SPEED = 1.2f;
+    const float HORIZONTAL_MAX_SPEED = 1.6f;
+    
+    // Shield state: 0=none, 1=up, 2=down, 3=left, 4=right
+    int shieldDir = 0;
+    int shieldX = p_x, shieldY = p_y;
+    
+    int minigame1Counter = 0;
+    
+    // --- PRE-MINIGAME MESSAGE SEQUENCE (3 messages x 2s each = 6 seconds total)
+    const int MSG_FRAMES = 40; // 40 frames = 2 seconds at 20 FPS
+    const int PRE_TOTAL_FRAMES = 3 * MSG_FRAMES;
+    shieldDir = 0; // Initialize shield direction
+    for (int pf = 0; pf < PRE_TOTAL_FRAMES; ++pf) {
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        // Draw lives at top-right
+        DrawLives(lives);
+        
+        // Draw green soul at fixed center position
+        Disp.DrawSprite(greenSoul, p_x, p_y, false);
+        
+        // Handle shield input (WASD) during messages
+        shieldDir = 0; // reset each frame
+        if (input('W') || input(VK_UP)) shieldDir = 1;      // up
+        else if (input('S') || input(VK_DOWN)) shieldDir = 2; // down
+        else if (input('A') || input(VK_LEFT)) shieldDir = 3; // left
+        else if (input('D') || input(VK_RIGHT)) shieldDir = 4; // right
+        
+        // Draw shield if active (accounting for player dimensions: 4 wide, 2 tall)
+        if (shieldDir > 0) {
+            if (shieldDir == 1) {
+                // Up: horizontal line above player (centered at player x, above player y)
+                // Player is 4 wide, so shield extends from p_x to p_x+3, with 1 char separation
+                for (int sx = 0; sx < 4; ++sx) {
+                    int drawX = p_x + sx;
+                    int drawY = p_y - 2; // 1 char separation above player
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '-';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir == 2) {
+                // Down: horizontal line below player (player is 2 tall, so shield is at p_y+2 with 1 char separation)
+                for (int sx = 0; sx < 4; ++sx) {
+                    int drawX = p_x + sx;
+                    int drawY = p_y + 3; // 1 char separation below player
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '-';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir == 3) {
+                // Left: vertical line to the left of player (player is 2 tall, with 1 char separation)
+                for (int sy = 0; sy < 2; ++sy) {
+                    int drawX = p_x - 2; // 1 char separation to the left
+                    int drawY = p_y + sy;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '|';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir == 4) {
+                // Right: vertical line to the right of player (player is 2 tall, 4 wide, with 1 char separation)
+                for (int sy = 0; sy < 2; ++sy) {
+                    int drawX = p_x + 5; // 1 char separation to the right
+                    int drawY = p_y + sy;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '|';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            }
+        }
+        
+        // Choose which message to display based on frame
+        int m = pf / MSG_FRAMES; if (m < 0) m = 0; if (m > 1) m = 1;
+        Disp.PutString(level3Msgs[m], p_x - 7, p_y + 2, false);
+        
+        // Allow exiting while the messages show
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    while (inLevel) {
+        if (minigame1Counter >= MINIGAME1_FRAMES) {
+            // Minigame 1 completed
+            break;
+        }
+        
+        // Reset screen
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        // Draw lives
+        DrawLives(lives);
+        
+        if (invTimer > 0) invTimer--;
+        
+        // Draw green soul at fixed center position
+        Disp.DrawSprite(greenSoul, p_x, p_y, false);
+        
+        // Handle shield input (WASD)
+        shieldDir = 0; // reset each frame
+        if (input('W') || input(VK_UP)) shieldDir = 1;      // up
+        else if (input('S') || input(VK_DOWN)) shieldDir = 2; // down
+        else if (input('A') || input(VK_LEFT)) shieldDir = 3; // left
+        else if (input('D') || input(VK_RIGHT)) shieldDir = 4; // right
+        
+        // Draw shield if active (accounting for player dimensions: 4 wide, 2 tall)
+        if (shieldDir > 0) {
+            if (shieldDir == 1) {
+                // Up: horizontal line above player (centered at player x, above player y)
+                // Player is 4 wide, so shield extends from p_x to p_x+3, with 1 char separation
+                for (int sx = 0; sx < 4; ++sx) {
+                    int drawX = p_x + sx;
+                    int drawY = p_y - 2; // 1 char separation above player
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '-';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir == 2) {
+                // Down: horizontal line below player (player is 2 tall, so shield is at p_y+2 with 1 char separation)
+                for (int sx = 0; sx < 4; ++sx) {
+                    int drawX = p_x + sx;
+                    int drawY = p_y + 3; // 1 char separation below player
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '-';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir == 3) {
+                // Left: vertical line to the left of player (player is 2 tall, with 1 char separation)
+                for (int sy = 0; sy < 2; ++sy) {
+                    int drawX = p_x - 2; // 1 char separation to the left
+                    int drawY = p_y + sy;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '|';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir == 4) {
+                // Right: vertical line to the right of player (player is 2 tall, 4 wide, with 1 char separation)
+                for (int sy = 0; sy < 2; ++sy) {
+                    int drawX = p_x + 5; // 1 char separation to the right
+                    int drawY = p_y + sy;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '|';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            }
+        }
+        
+        // Spawn arrows randomly
+        if (spawnCounter <= 0) {
+            // Find free arrow slot
+            int slot = -1;
+            for (int i = 0; i < MAX_ARROWS; ++i) {
+                if (!arrows[i].active) { slot = i; break; }
+            }
+            
+            if (slot != -1) {
+                arrows[slot].active = true;
+                
+                // Choose random direction: 0=from top, 1=from bottom, 2=from left, 3=from right
+                int spawnDir = rand() % 4;
+                arrows[slot].dir = spawnDir;
+                
+                // Assign speed based on direction (vertical: 0,1 or horizontal: 2,3)
+                if (spawnDir == 0 || spawnDir == 1) {
+                    // Vertical arrows (from top or bottom)
+                    arrows[slot].speed = VERTICAL_MIN_SPEED + ((rand() % 100) / 100.0f) * (VERTICAL_MAX_SPEED - VERTICAL_MIN_SPEED);
+                } else {
+                    // Horizontal arrows (from left or right)
+                    arrows[slot].speed = HORIZONTAL_MIN_SPEED + ((rand() % 100) / 100.0f) * (HORIZONTAL_MAX_SPEED - HORIZONTAL_MIN_SPEED);
+                }
+                
+                if (spawnDir == 0) {
+                    // From top at (x/2, 0) moving down - spawn at center-x, top
+                    arrows[slot].x = 60.0f; // 120 / 2
+                    arrows[slot].y = -1.0f;
+                } else if (spawnDir == 1) {
+                    // From bottom at (x/2, y) moving up - spawn at center-x, bottom
+                    arrows[slot].x = 60.0f; // 120 / 2
+                    arrows[slot].y = 30.0f;
+                } else if (spawnDir == 2) {
+                    // From left at (0, y/2) moving right - spawn at left, center-y
+                    arrows[slot].x = -1.0f;
+                    arrows[slot].y = 15.0f; // 30 / 2
+                } else {
+                    // From right at (x, y/2) moving left - spawn at right, center-y
+                    arrows[slot].x = 121.0f;
+                    arrows[slot].y = 15.0f; // 30 / 2
+                }
+            }
+            
+            spawnCounter = SPAWN_MIN + (rand() % (SPAWN_MAX - SPAWN_MIN + 1));
+        } else {
+            spawnCounter--;
+        }
+        
+        // Move arrows and check collisions
+        for (int i = 0; i < MAX_ARROWS; ++i) {
+            if (!arrows[i].active) continue;
+            
+            // Move arrow
+            if (arrows[i].dir == 0) {
+                // From top, moving down
+                arrows[i].y += arrows[i].speed;
+            } else if (arrows[i].dir == 1) {
+                // From bottom, moving up
+                arrows[i].y -= arrows[i].speed;
+            } else if (arrows[i].dir == 2) {
+                // From left, moving right
+                arrows[i].x += arrows[i].speed;
+            } else {
+                // From right, moving left
+                arrows[i].x -= arrows[i].speed;
+            }
+            
+            // Check shield collision (if shield is active) - using float positions for accuracy
+            bool hitShield = false;
+            if (shieldDir == 1) {
+                // Shield up: horizontal line at (p_x..p_x+3, p_y-2)
+                // Generous collision to catch 2-wide arrows
+                if (arrows[i].y >= p_y - 2.7f && arrows[i].y <= p_y - 1.3f &&
+                    arrows[i].x >= p_x - 1.0f && arrows[i].x <= p_x + 4.0f) {
+                    hitShield = true;
+                }
+            } else if (shieldDir == 2) {
+                // Shield down: horizontal line at (p_x..p_x+3, p_y+3)
+                if (arrows[i].y >= p_y + 2.3f && arrows[i].y <= p_y + 3.7f &&
+                    arrows[i].x >= p_x - 1.0f && arrows[i].x <= p_x + 4.0f) {
+                    hitShield = true;
+                }
+            } else if (shieldDir == 3) {
+                // Shield left: vertical line at (p_x-2, p_y..p_y+1)
+                // Generous collision to catch 2-tall arrows
+                if (arrows[i].x >= p_x - 2.7f && arrows[i].x <= p_x - 1.3f &&
+                    arrows[i].y >= p_y - 1.0f && arrows[i].y <= p_y + 2.0f) {
+                    hitShield = true;
+                }
+            } else if (shieldDir == 4) {
+                // Shield right: vertical line at (p_x+5, p_y..p_y+1)
+                // Generous collision to catch 2-tall arrows
+                if (arrows[i].x >= p_x + 4.3f && arrows[i].x <= p_x + 5.7f &&
+                    arrows[i].y >= p_y - 1.0f && arrows[i].y <= p_y + 2.0f) {
+                    hitShield = true;
+                }
+            }
+            
+            // Check player collision (if arrow wasn't blocked by shield)
+            // Player dimensions: 4 wide, 2 tall at (p_x, p_y)
+            // Arrow dimensions: 2x1 for horizontal, 1x2 for vertical
+            // Use float-based collision for accuracy
+            bool hitPlayer = false;
+            
+            if (arrows[i].dir == 0 || arrows[i].dir == 1) {
+                // Vertical arrow: 1 wide, 2 tall (spans from x to x+0.9, y to y+1.9)
+                if (arrows[i].x + 0.9f >= p_x && arrows[i].x <= p_x + 3.9f &&
+                    arrows[i].y + 1.9f >= p_y && arrows[i].y <= p_y + 1.9f) {
+                    hitPlayer = true;
+                }
+            } else {
+                // Horizontal arrow: 2 wide, 1 tall (spans from x to x+1.9, y to y+0.9)
+                if (arrows[i].x + 1.9f >= p_x && arrows[i].x <= p_x + 3.9f &&
+                    arrows[i].y + 0.9f >= p_y && arrows[i].y <= p_y + 1.9f) {
+                    hitPlayer = true;
+                }
+            }
+            
+            if (!hitShield && hitPlayer) {
+                if (invTimer == 0) {
+                    lives--;
+                    invTimer = INV_FRAMES;
+                    if (lives <= 0) {
+                        for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+                        gameOver();
+                        return;
+                    }
+                }
+                hitShield = true; // treat hit as blocked
+            }
+            
+            // Remove arrow if hit or off-screen
+            if (hitShield) {
+                arrows[i].active = false;
+                continue; // Skip drawing this arrow
+            } else if (arrows[i].x < -5 || arrows[i].x > 125 || arrows[i].y < -5 || arrows[i].y > 35) {
+                arrows[i].active = false;
+                continue; // Skip drawing this arrow
+            }
+            
+            // Draw arrow ONLY if it wasn't removed (represented as 2 characters - 2x1 for horizontal, 1x2 for vertical)
+            int arrowX = (int)arrows[i].x;
+            int arrowY = (int)arrows[i].y;
+            char arrowChar = '>';
+            if (arrows[i].dir == 0) arrowChar = 'v'; // down
+            else if (arrows[i].dir == 1) arrowChar = '^'; // up
+            else if (arrows[i].dir == 2) arrowChar = '>';  // right
+            else arrowChar = '<'; // left
+            
+            // Draw arrow with size based on direction
+            if (arrows[i].dir == 0 || arrows[i].dir == 1) {
+                // Vertical arrows: draw 1x2 (top and bottom)
+                if (arrowX >= 0 && arrowX < 120 && arrowY >= 0 && arrowY < 30) {
+                    Disp.wDisplay[arrowY * 120 + arrowX].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[arrowY * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                }
+                if (arrowX >= 0 && arrowX < 120 && arrowY + 1 >= 0 && arrowY + 1 < 30) {
+                    Disp.wDisplay[(arrowY + 1) * 120 + arrowX].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[(arrowY + 1) * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                }
+            } else {
+                // Horizontal arrows: draw 2x1 (left and right)
+                if (arrowX >= 0 && arrowX < 120 && arrowY >= 0 && arrowY < 30) {
+                    Disp.wDisplay[arrowY * 120 + arrowX].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[arrowY * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                }
+                if (arrowX + 1 >= 0 && arrowX + 1 < 120 && arrowY >= 0 && arrowY < 30) {
+                    Disp.wDisplay[arrowY * 120 + arrowX + 1].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[arrowY * 120 + arrowX + 1].Attributes = joinColor(BLACK, ORANGE);
+                }
+            }
+        }
+        
+        // Debug keys
+        if (input('K')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameWin();
+            return;
+        }
+        if (input('J')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameOver();
+            return;
+        }
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        minigame1Counter++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    // Restore soul colors
+    for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+    
+    // If player died during minigame 1, don't continue
+    if (!inLevel) return;
+    
+    // --- MINIGAME 2 (Moving dodge with multi-directional arrows): 15 seconds ---
+    const int MINIGAME2_FRAMES = 15 * 20; // 15 seconds at 20 FPS
+    const int MAX_ARROWS2 = 36;
+    struct Arrow2 { float x, y; int dir; float speed; bool active; };
+    Arrow2 arrows2[MAX_ARROWS2];
+    for (int i = 0; i < MAX_ARROWS2; ++i) { arrows2[i].active = false; arrows2[i].speed = 0.0f; }
+    
+    // Change soul back to green and allow movement
+    for (int i = 0; i < 4*2; ++i) greenSoul.Colors[i] = GREEN;
+    
+    // Player position for minigame 2 (Level 1 style movement - no gravity)
+    p_x = 58; p_y = 14;
+    const int MOVE_LIMIT_LEFT = 4, MOVE_LIMIT_RIGHT = 112, MOVE_LIMIT_UP = 2, MOVE_LIMIT_DOWN = 27;
+    
+    int spawn2Counter = 0;
+    const int SPAWN_MIN2 = 6, SPAWN_MAX2 = 12;
+    const float ARROW_SPEED2_MIN = 1.5f, ARROW_SPEED2_MAX = 2.5f;
+    int minigame2Counter = 0;
+    
+    while (inLevel) {
+        if (minigame2Counter >= MINIGAME2_FRAMES) {
+            break;
+        }
+        
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        DrawLives(lives);
+        if (invTimer > 0) invTimer--;
+        
+        // Level 1 style movement (simple WASD, no gravity)
+        if (input('A') || input(VK_LEFT)) if (p_x >= MOVE_LIMIT_LEFT) p_x -= 2;
+        if (input('D') || input(VK_RIGHT)) if (p_x <= MOVE_LIMIT_RIGHT) p_x += 2;
+        if (input('W') || input(VK_UP)) if (p_y >= MOVE_LIMIT_UP) p_y--;
+        if (input('S') || input(VK_DOWN)) if (p_y < MOVE_LIMIT_DOWN) p_y++;
+        
+        Disp.DrawSprite(greenSoul, p_x, p_y, false);
+        
+        // Spawn arrows for minigame 2
+        if (spawn2Counter <= 0) {
+            int slot = -1;
+            for (int i = 0; i < MAX_ARROWS2; ++i) if (!arrows2[i].active) { slot = i; break; }
+            
+            if (slot != -1) {
+                arrows2[slot].active = true;
+                arrows2[slot].speed = ARROW_SPEED2_MIN + ((rand() % 100) / 100.0f) * (ARROW_SPEED2_MAX - ARROW_SPEED2_MIN);
+                int spawnDir = rand() % 4;
+                arrows2[slot].dir = spawnDir;
+                
+                if (spawnDir == 0) {
+                    arrows2[slot].x = (float)(2 + rand() % 116);
+                    arrows2[slot].y = -2.0f;
+                } else if (spawnDir == 1) {
+                    arrows2[slot].x = (float)(2 + rand() % 116);
+                    arrows2[slot].y = 30.0f;
+                } else if (spawnDir == 2) {
+                    arrows2[slot].x = -2.0f;
+                    arrows2[slot].y = (float)(2 + rand() % 26);
+                } else {
+                    arrows2[slot].x = 122.0f;
+                    arrows2[slot].y = (float)(2 + rand() % 26);
+                }
+            }
+            spawn2Counter = SPAWN_MIN2 + (rand() % (SPAWN_MAX2 - SPAWN_MIN2 + 1));
+        } else {
+            spawn2Counter--;
+        }
+        
+        // Move and draw arrows for minigame 2
+        for (int i = 0; i < MAX_ARROWS2; ++i) {
+            if (!arrows2[i].active) continue;
+            
+            if (arrows2[i].dir == 0) arrows2[i].y += arrows2[i].speed;
+            else if (arrows2[i].dir == 1) arrows2[i].y -= arrows2[i].speed;
+            else if (arrows2[i].dir == 2) arrows2[i].x += arrows2[i].speed;
+            else arrows2[i].x -= arrows2[i].speed;
+            
+            int arrowX = (int)arrows2[i].x;
+            int arrowY = (int)arrows2[i].y;
+            char arrowChar = '>';
+            if (arrows2[i].dir == 0) arrowChar = 'v';
+            else if (arrows2[i].dir == 1) arrowChar = '^';
+            else if (arrows2[i].dir == 2) arrowChar = '>';
+            else arrowChar = '<';
+            
+            // Draw 1x3 or 3x1 arrows
+            if (arrows2[i].dir == 0 || arrows2[i].dir == 1) {
+                // Vertical: 1x3
+                for (int dy = 0; dy < 3; ++dy) {
+                    if (arrowX >= 0 && arrowX < 120 && arrowY + dy >= 0 && arrowY + dy < 30) {
+                        Disp.wDisplay[(arrowY + dy) * 120 + arrowX].Char.AsciiChar = arrowChar;
+                        Disp.wDisplay[(arrowY + dy) * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                    }
+                }
+            } else {
+                // Horizontal: 3x1
+                for (int dx = 0; dx < 3; ++dx) {
+                    if (arrowX + dx >= 0 && arrowX + dx < 120 && arrowY >= 0 && arrowY < 30) {
+                        Disp.wDisplay[arrowY * 120 + arrowX + dx].Char.AsciiChar = arrowChar;
+                        Disp.wDisplay[arrowY * 120 + arrowX + dx].Attributes = joinColor(BLACK, ORANGE);
+                    }
+                }
+            }
+            
+            // Collision check
+            bool hitArrow = false;
+            if (arrows2[i].dir == 0 || arrows2[i].dir == 1) {
+                if (arrows2[i].x + 0.9f >= p_x && arrows2[i].x <= p_x + 3.9f &&
+                    arrows2[i].y + 2.9f >= p_y && arrows2[i].y <= p_y + 1.9f) {
+                    hitArrow = true;
+                }
+            } else {
+                if (arrows2[i].x + 2.9f >= p_x && arrows2[i].x <= p_x + 3.9f &&
+                    arrows2[i].y + 0.9f >= p_y && arrows2[i].y <= p_y + 1.9f) {
+                    hitArrow = true;
+                }
+            }
+            
+            if (hitArrow) {
+                if (invTimer == 0) {
+                    lives--;
+                    invTimer = INV_FRAMES;
+                    if (lives <= 0) {
+                        for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+                        gameOver();
+                        return;
+                    }
+                }
+                arrows2[i].active = false;
+            } else if (arrowX < -5 || arrowX > 125 || arrowY < -5 || arrowY > 35) {
+                arrows2[i].active = false;
+            }
+        }
+        
+        if (input('K')) { for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a]; gameWin(); return; }
+        if (input('J')) { for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); return; }
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        minigame2Counter++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    if (!inLevel) return;
+    
+    // --- MINIGAME 3 (Shield with inverted controls): 10 seconds ---
+    const int MINIGAME3_FRAMES = 10 * 20; // 10 seconds at 20 FPS
+    const int MAX_ARROWS3 = 18;
+    struct Arrow3 { float x, y; int dir; float speed; bool active; };
+    Arrow3 arrows3[MAX_ARROWS3];
+    for (int i = 0; i < MAX_ARROWS3; ++i) { arrows3[i].active = false; arrows3[i].speed = 0.0f; }
+    
+    p_x = 58; p_y = 14;
+    
+    // Show "Be careful" message
+    for (int i = 0; i < 120 * 30; ++i) {
+        Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+        Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+    }
+    DrawLives(lives);
+    Disp.DrawSprite(greenSoul, p_x, p_y, false);
+    Disp.PutString("Be careful", p_x - 3, p_y + 3, false);
+    Disp.OutPut();
+    Sleep(1500);
+    
+    int shieldDir3 = 0;
+    int spawn3Counter = 0;
+    const int SPAWN_MIN3 = 8, SPAWN_MAX3 = 18;
+    int minigame3Counter = 0;
+    
+    while (inLevel) {
+        if (minigame3Counter >= MINIGAME3_FRAMES) {
+            break;
+        }
+        
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        DrawLives(lives);
+        if (invTimer > 0) invTimer--;
+        
+        Disp.DrawSprite(greenSoul, p_x, p_y, false);
+        
+        // Handle inverted shield input
+        shieldDir3 = 0;
+        if (input('W') || input(VK_UP)) shieldDir3 = 2;      // W = down (inverted)
+        else if (input('S') || input(VK_DOWN)) shieldDir3 = 1; // S = up (inverted)
+        else if (input('A') || input(VK_LEFT)) shieldDir3 = 4; // A = right (inverted)
+        else if (input('D') || input(VK_RIGHT)) shieldDir3 = 3; // D = left (inverted)
+        
+        // Draw inverted shield
+        if (shieldDir3 > 0) {
+            if (shieldDir3 == 1) {
+                for (int sx = 0; sx < 4; ++sx) {
+                    int drawX = p_x + sx;
+                    int drawY = p_y - 2;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '-';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir3 == 2) {
+                for (int sx = 0; sx < 4; ++sx) {
+                    int drawX = p_x + sx;
+                    int drawY = p_y + 3;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '-';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir3 == 3) {
+                for (int sy = 0; sy < 2; ++sy) {
+                    int drawX = p_x - 2;
+                    int drawY = p_y + sy;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '|';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            } else if (shieldDir3 == 4) {
+                for (int sy = 0; sy < 2; ++sy) {
+                    int drawX = p_x + 5;
+                    int drawY = p_y + sy;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '|';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(BLACK, GOLD);
+                    }
+                }
+            }
+        }
+        
+        // Spawn arrows for minigame 3
+        if (spawn3Counter <= 0) {
+            int slot = -1;
+            for (int i = 0; i < MAX_ARROWS3; ++i) if (!arrows3[i].active) { slot = i; break; }
+            
+            if (slot != -1) {
+                arrows3[slot].active = true;
+                int spawnDir = rand() % 4;
+                arrows3[slot].dir = spawnDir;
+                
+                if (spawnDir == 0 || spawnDir == 1) {
+                    arrows3[slot].speed = VERTICAL_MIN_SPEED + ((rand() % 100) / 100.0f) * (VERTICAL_MAX_SPEED - VERTICAL_MIN_SPEED);
+                } else {
+                    arrows3[slot].speed = HORIZONTAL_MIN_SPEED + ((rand() % 100) / 100.0f) * (HORIZONTAL_MAX_SPEED - HORIZONTAL_MIN_SPEED);
+                }
+                
+                if (spawnDir == 0) {
+                    arrows3[slot].x = 60.0f;
+                    arrows3[slot].y = -1.0f;
+                } else if (spawnDir == 1) {
+                    arrows3[slot].x = 60.0f;
+                    arrows3[slot].y = 30.0f;
+                } else if (spawnDir == 2) {
+                    arrows3[slot].x = -1.0f;
+                    arrows3[slot].y = 15.0f;
+                } else {
+                    arrows3[slot].x = 121.0f;
+                    arrows3[slot].y = 15.0f;
+                }
+            }
+            spawn3Counter = SPAWN_MIN3 + (rand() % (SPAWN_MAX3 - SPAWN_MIN3 + 1));
+        } else {
+            spawn3Counter--;
+        }
+        
+        // Move and draw arrows for minigame 3
+        for (int i = 0; i < MAX_ARROWS3; ++i) {
+            if (!arrows3[i].active) continue;
+            
+            if (arrows3[i].dir == 0) arrows3[i].y += arrows3[i].speed;
+            else if (arrows3[i].dir == 1) arrows3[i].y -= arrows3[i].speed;
+            else if (arrows3[i].dir == 2) arrows3[i].x += arrows3[i].speed;
+            else arrows3[i].x -= arrows3[i].speed;
+            
+            bool hitShield3 = false;
+            if (shieldDir3 == 1) {
+                if (arrows3[i].y >= p_y - 2.7f && arrows3[i].y <= p_y - 1.3f &&
+                    arrows3[i].x >= p_x - 1.0f && arrows3[i].x <= p_x + 4.0f) {
+                    hitShield3 = true;
+                }
+            } else if (shieldDir3 == 2) {
+                if (arrows3[i].y >= p_y + 2.3f && arrows3[i].y <= p_y + 3.7f &&
+                    arrows3[i].x >= p_x - 1.0f && arrows3[i].x <= p_x + 4.0f) {
+                    hitShield3 = true;
+                }
+            } else if (shieldDir3 == 3) {
+                if (arrows3[i].x >= p_x - 2.7f && arrows3[i].x <= p_x - 1.3f &&
+                    arrows3[i].y >= p_y - 1.0f && arrows3[i].y <= p_y + 2.0f) {
+                    hitShield3 = true;
+                }
+            } else if (shieldDir3 == 4) {
+                if (arrows3[i].x >= p_x + 4.3f && arrows3[i].x <= p_x + 5.7f &&
+                    arrows3[i].y >= p_y - 1.0f && arrows3[i].y <= p_y + 2.0f) {
+                    hitShield3 = true;
+                }
+            }
+            
+            bool hitPlayer3 = false;
+            if (arrows3[i].dir == 0 || arrows3[i].dir == 1) {
+                if (arrows3[i].x + 0.9f >= p_x && arrows3[i].x <= p_x + 3.9f &&
+                    arrows3[i].y + 1.9f >= p_y && arrows3[i].y <= p_y + 1.9f) {
+                    hitPlayer3 = true;
+                }
+            } else {
+                if (arrows3[i].x + 1.9f >= p_x && arrows3[i].x <= p_x + 3.9f &&
+                    arrows3[i].y + 0.9f >= p_y && arrows3[i].y <= p_y + 1.9f) {
+                    hitPlayer3 = true;
+                }
+            }
+            
+            if (!hitShield3 && hitPlayer3) {
+                if (invTimer == 0) {
+                    lives--;
+                    invTimer = INV_FRAMES;
+                    if (lives <= 0) {
+                        for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+                        gameOver();
+                        return;
+                    }
+                }
+                hitShield3 = true;
+            }
+            
+            if (hitShield3) {
+                arrows3[i].active = false;
+                continue;
+            } else if (arrows3[i].x < -5 || arrows3[i].x > 125 || arrows3[i].y < -5 || arrows3[i].y > 35) {
+                arrows3[i].active = false;
+                continue;
+            }
+            
+            int arrowX = (int)arrows3[i].x;
+            int arrowY = (int)arrows3[i].y;
+            char arrowChar = '>';
+            if (arrows3[i].dir == 0) arrowChar = 'v';
+            else if (arrows3[i].dir == 1) arrowChar = '^';
+            else if (arrows3[i].dir == 2) arrowChar = '>';
+            else arrowChar = '<';
+            
+            if (arrows3[i].dir == 0 || arrows3[i].dir == 1) {
+                if (arrowX >= 0 && arrowX < 120 && arrowY >= 0 && arrowY < 30) {
+                    Disp.wDisplay[arrowY * 120 + arrowX].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[arrowY * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                }
+                if (arrowX >= 0 && arrowX < 120 && arrowY + 1 >= 0 && arrowY + 1 < 30) {
+                    Disp.wDisplay[(arrowY + 1) * 120 + arrowX].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[(arrowY + 1) * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                }
+            } else {
+                if (arrowX >= 0 && arrowX < 120 && arrowY >= 0 && arrowY < 30) {
+                    Disp.wDisplay[arrowY * 120 + arrowX].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[arrowY * 120 + arrowX].Attributes = joinColor(BLACK, ORANGE);
+                }
+                if (arrowX + 1 >= 0 && arrowX + 1 < 120 && arrowY >= 0 && arrowY < 30) {
+                    Disp.wDisplay[arrowY * 120 + arrowX + 1].Char.AsciiChar = arrowChar;
+                    Disp.wDisplay[arrowY * 120 + arrowX + 1].Attributes = joinColor(BLACK, ORANGE);
+                }
+            }
+        }
+        
+        if (input('K')) { for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a]; gameWin(); return; }
+        if (input('J')) { for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a]; gameOver(); return; }
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        minigame3Counter++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    // All minigames completed - victory!
+    for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+    gameWin();
 }
 
 void runLevel4() {
-    // TODO: Implement Level 4 logic here. See runLevel1 for reference.
+    inLevel = true;
+    frameCount = 0;
+    
+    int lives = 3;
+    int invTimer = 0;
+    const int INV_FRAMES = 20;
+    
+    // Create purple soul sprite for this level
+    AsciiSprite purpleSoul = soul;
+    byte savedSoulColors[256];
+    for (int i = 0; i < 4*2; ++i) {
+        savedSoulColors[i] = soul.Colors[i];
+        purpleSoul.Colors[i] = PURPLE;
+    }
+    
+    // Messages for Level 4
+    const char *level4Msgs[2] = {
+        "Use AD to displace horizontally",
+        "Use WS to change of line"
+    };
+    
+    // Three purple horizontal lines (y positions)
+    const int LINE_Y[3] = { 8, 14, 20 };
+    int currentLine = 1; // Start at center line (index 1)
+    int playerX = 58;    // Start at center x
+    
+    // --- PRE-MINIGAME MESSAGE SEQUENCE (2 messages x 2s each = 4 seconds total)
+    const int MSG_FRAMES = 40; // 40 frames = 2 seconds at 20 FPS
+    const int PRE_TOTAL_FRAMES = 2 * MSG_FRAMES;
+    for (int pf = 0; pf < PRE_TOTAL_FRAMES; ++pf) {
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        DrawLives(lives);
+        
+        // Draw the three purple lines
+        for (int line = 0; line < 3; ++line) {
+            for (int x = 2; x < 118; ++x) {
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Char.AsciiChar = (char)196;
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Attributes = joinColor(BLACK, PURPLE);
+            }
+        }
+        
+        // Handle player input for line change and horizontal movement during messages
+        // Use key release detection: player must release and press again to switch lines
+        if (keyReleased('W') || keyReleased(VK_UP)) { if (currentLine > 0) currentLine--; }
+        if (keyReleased('S') || keyReleased(VK_DOWN)) { if (currentLine < 2) currentLine++; }
+        if (input('A') || input(VK_LEFT)) if (playerX >= 4) playerX -= 2;
+        if (input('D') || input(VK_RIGHT)) if (playerX <= 112) playerX += 2;
+        
+        // Draw purple soul
+        Disp.DrawSprite(purpleSoul, playerX, LINE_Y[currentLine], false);
+        
+        // Choose which message to display based on frame
+        int m = pf / MSG_FRAMES; if (m < 0) m = 0; if (m > 1) m = 1;
+        Disp.PutString(level4Msgs[m], playerX - 10, LINE_Y[currentLine] + 3, false);
+        
+        // Allow exiting while the messages show
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    // --- MINIGAME 1 (Line-based obstacle dodge): 15 seconds ---
+    const int MINIGAME1_FRAMES = 15 * 20; // 15 seconds at 20 FPS
+    const int MAX_OBSTACLES = 20;
+    struct Obstacle { int x, y; int speed; int dir; bool active; };
+    Obstacle obstacles[MAX_OBSTACLES];
+    for (int i = 0; i < MAX_OBSTACLES; ++i) obstacles[i].active = false;
+    
+    int spawnCounter = 0;
+    const int SPAWN_MIN = 8, SPAWN_MAX = 16;
+    int minigame1Counter = 0;
+    
+    while (inLevel) {
+        if (minigame1Counter >= MINIGAME1_FRAMES) {
+            break;
+        }
+        
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        DrawLives(lives);
+        if (invTimer > 0) invTimer--;
+        
+        // Draw the three purple lines
+        for (int line = 0; line < 3; ++line) {
+            for (int x = 2; x < 118; ++x) {
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Char.AsciiChar = (char)196;
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Attributes = joinColor(BLACK, PURPLE);
+            }
+        }
+        
+        // Handle player input for line change and horizontal movement
+        // Use key release detection: player must release and press again to switch lines
+        if (keyReleased('W') || keyReleased(VK_UP)) { if (currentLine > 0) currentLine--; }
+        if (keyReleased('S') || keyReleased(VK_DOWN)) { if (currentLine < 2) currentLine++; }
+        if (input('A') || input(VK_LEFT)) if (playerX >= 4) playerX -= 2;
+        if (input('D') || input(VK_RIGHT)) if (playerX <= 112) playerX += 2;
+        
+        // Draw purple soul on current line
+        Disp.DrawSprite(purpleSoul, playerX, LINE_Y[currentLine], false);
+        
+        // Spawn obstacles
+        if (spawnCounter <= 0) {
+            int slot = -1;
+            for (int i = 0; i < MAX_OBSTACLES; ++i) if (!obstacles[i].active) { slot = i; break; }
+            
+            if (slot != -1) {
+                obstacles[slot].active = true;
+                obstacles[slot].speed = 2 + (rand() % 3); // Speed 2, 3, or 4 (faster)
+                obstacles[slot].dir = (rand() % 2 == 0) ? -1 : 1; // -1 = right to left, 1 = left to right
+                
+                // Choose 2 out of 3 lines to block
+                int blockedLines[2];
+                int firstLine = rand() % 3;
+                int secondLine = rand() % 3;
+                while (secondLine == firstLine) secondLine = rand() % 3;
+                blockedLines[0] = firstLine;
+                blockedLines[1] = secondLine;
+                
+                // Set obstacle position on one of the blocked lines (will be the first)
+                obstacles[slot].y = LINE_Y[blockedLines[0]];
+                if (obstacles[slot].dir == -1) {
+                    obstacles[slot].x = 118; // Start from right
+                } else {
+                    obstacles[slot].x = 2; // Start from left
+                }
+            }
+            spawnCounter = SPAWN_MIN + (rand() % (SPAWN_MAX - SPAWN_MIN + 1));
+        } else {
+            spawnCounter--;
+        }
+        
+        // Move and draw obstacles (3x3 white rectangles)
+        for (int i = 0; i < MAX_OBSTACLES; ++i) {
+            if (!obstacles[i].active) continue;
+            
+            obstacles[i].x += obstacles[i].dir * obstacles[i].speed;
+            
+            // Draw 3x3 obstacle
+            for (int oy = 0; oy < 3; ++oy) {
+                for (int ox = 0; ox < 3; ++ox) {
+                    int drawX = obstacles[i].x + ox;
+                    int drawY = obstacles[i].y + oy - 1;
+                    if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                        Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '#';
+                        Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(WHITE, WHITE);
+                    }
+                }
+            }
+            
+            // Collision check (3x3 obstacle vs 4x2 soul)
+            if (collides(obstacles[i].x, 3, obstacles[i].y - 1, 3, playerX, 4, LINE_Y[currentLine], 2)) {
+                if (invTimer == 0) {
+                    lives--;
+                    invTimer = INV_FRAMES;
+                    if (lives <= 0) {
+                        for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+            
+            // Remove if off-screen
+            if (obstacles[i].x + 3 < 0 || obstacles[i].x > 119) {
+                obstacles[i].active = false;
+            }
+        }
+        
+        // Debug keys
+        if (input('K')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameWin();
+            return;
+        }
+        if (input('J')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameOver();
+            return;
+        }
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        minigame1Counter++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    if (!inLevel) return;
+    
+    // --- MINIGAME 2 (Laser avoidance): 10.5 seconds ---
+    const int MINIGAME2_FRAMES = 10.5 * 20; // 10.5 seconds at 20 FPS (210 frames)
+    const int LASER_CYCLE = 40; // 2 seconds = 40 frames (0.5s normal + 1s red + 0.5s filled)
+    const int LASER_NORMAL_FRAMES = 10; // 0.5 seconds = 10 frames (normal purple)
+    const int LASER_WARNING_FRAMES = 30; // 1.5 seconds total for warning (1s red + 0.5s filled)
+    const int LASER_FILLED_START = 20; // Filled laser starts at frame 20 (after 1s red)
+    
+    int minigame2Counter = 0;
+    
+    while (inLevel) {
+        if (minigame2Counter >= MINIGAME2_FRAMES) {
+            break;
+        }
+        
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        DrawLives(lives);
+        if (invTimer > 0) invTimer--;
+        
+        // Determine position in laser cycle
+        int cyclePos = minigame2Counter % LASER_CYCLE;
+        bool laserFilled = (cyclePos >= LASER_FILLED_START); // 0.5s into cycle
+        bool laserWarning = (cyclePos >= LASER_NORMAL_FRAMES); // After 0.5s normal phase
+        
+        // Determine which 2 lines will have lasers (rotate through combinations)
+        // Cycle through: lines 0&1, lines 1&2, lines 0&2
+        int cycleNum = minigame2Counter / LASER_CYCLE;
+        int laserLine1 = 0, laserLine2 = 0;
+        switch (cycleNum % 3) {
+            case 0: laserLine1 = 0; laserLine2 = 1; break;
+            case 1: laserLine1 = 1; laserLine2 = 2; break;
+            case 2: laserLine1 = 0; laserLine2 = 2; break;
+        }
+        
+        // Draw the three lines
+        for (int line = 0; line < 3; ++line) {
+            bool isLaserLine = (line == laserLine1 || line == laserLine2);
+            byte lineColor = PURPLE;
+            char lineChar = (char)196; // Normal line character
+            
+            if (laserWarning && isLaserLine) {
+                lineColor = RED; // Lines turn red during red phase and filled phase
+                if (laserFilled) {
+                    lineChar = (char)219; // Solid block (laser beam)
+                }
+            }
+            
+            for (int x = 2; x < 118; ++x) {
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Char.AsciiChar = lineChar;
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Attributes = joinColor(BLACK, lineColor);
+            }
+        }
+        
+        // Handle player input for line change and horizontal movement
+        // Use key release detection: player must release and press again to switch lines
+        if (keyReleased('W') || keyReleased(VK_UP)) { if (currentLine > 0) currentLine--; }
+        if (keyReleased('S') || keyReleased(VK_DOWN)) { if (currentLine < 2) currentLine++; }
+        if (input('A') || input(VK_LEFT)) if (playerX >= 4) playerX -= 2;
+        if (input('D') || input(VK_RIGHT)) if (playerX <= 112) playerX += 2;
+        
+        // Draw purple soul on current line
+        Disp.DrawSprite(purpleSoul, playerX, LINE_Y[currentLine], false);
+        
+        // Check if player is on a laser line during filled laser phase (0.5s of the cycle)
+        bool onLaserLine = (currentLine == laserLine1 || currentLine == laserLine2);
+        if (laserFilled && onLaserLine) {
+            if (invTimer == 0) {
+                lives--;
+                invTimer = INV_FRAMES;
+                if (lives <= 0) {
+                    for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+                    gameOver();
+                    return;
+                }
+            }
+        }
+        
+        // Debug keys
+        if (input('K')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameWin();
+            return;
+        }
+        if (input('J')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameOver();
+            return;
+        }
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        minigame2Counter++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    if (!inLevel) return;
+    
+    // --- MINIGAME 3 (Paired obstacle dodge): 15 seconds ---
+    const int MINIGAME3_FRAMES = 15 * 20; // 15 seconds at 20 FPS
+    const int MAX_PAIRS = 10; // Maximum 10 pairs of obstacles
+    struct ObstaclePair { int x, speed; int dir; bool active; int line1, line2; };
+    ObstaclePair pairs[MAX_PAIRS];
+    for (int i = 0; i < MAX_PAIRS; ++i) pairs[i].active = false;
+    
+    int spawn3Counter = 0;
+    const int SPAWN3_MIN = 8, SPAWN3_MAX = 16;
+    int minigame3Counter = 0;
+    
+    while (inLevel) {
+        if (minigame3Counter >= MINIGAME3_FRAMES) {
+            break;
+        }
+        
+        for (int i = 0; i < 120 * 30; ++i) {
+            Disp.wDisplay[i].Char.AsciiChar = Disp.offScreenDisplay[i].Char;
+            Disp.wDisplay[i].Attributes = Disp.offScreenDisplay[i].Color;
+        }
+        
+        DrawLives(lives);
+        if (invTimer > 0) invTimer--;
+        
+        // Draw the three purple lines
+        for (int line = 0; line < 3; ++line) {
+            for (int x = 2; x < 118; ++x) {
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Char.AsciiChar = (char)196;
+                Disp.wDisplay[LINE_Y[line] * 120 + x].Attributes = joinColor(BLACK, PURPLE);
+            }
+        }
+        
+        // Handle player input for line change and horizontal movement
+        // Use key release detection: player must release and press again to switch lines
+        if (keyReleased('W') || keyReleased(VK_UP)) { if (currentLine > 0) currentLine--; }
+        if (keyReleased('S') || keyReleased(VK_DOWN)) { if (currentLine < 2) currentLine++; }
+        if (input('A') || input(VK_LEFT)) if (playerX >= 4) playerX -= 2;
+        if (input('D') || input(VK_RIGHT)) if (playerX <= 112) playerX += 2;
+        
+        // Draw purple soul on current line
+        Disp.DrawSprite(purpleSoul, playerX, LINE_Y[currentLine], false);
+        
+        // Spawn pairs of obstacles
+        if (spawn3Counter <= 0) {
+            int slot = -1;
+            for (int i = 0; i < MAX_PAIRS; ++i) if (!pairs[i].active) { slot = i; break; }
+            
+            if (slot != -1) {
+                pairs[slot].active = true;
+                pairs[slot].speed = 2 + (rand() % 3); // Speed 2, 3, or 4
+                pairs[slot].dir = (rand() % 2 == 0) ? -1 : 1; // -1 = right to left, 1 = left to right
+                
+                // Choose 2 different lines for the pair
+                int firstLine = rand() % 3;
+                int secondLine = rand() % 3;
+                while (secondLine == firstLine) secondLine = rand() % 3;
+                pairs[slot].line1 = firstLine;
+                pairs[slot].line2 = secondLine;
+                
+                // Set obstacle position
+                if (pairs[slot].dir == -1) {
+                    pairs[slot].x = 118; // Start from right
+                } else {
+                    pairs[slot].x = 2; // Start from left
+                }
+            }
+            spawn3Counter = SPAWN3_MIN + (rand() % (SPAWN3_MAX - SPAWN3_MIN + 1));
+        } else {
+            spawn3Counter--;
+        }
+        
+        // Move and draw paired obstacles (3x3 white rectangles on two different lines)
+        for (int i = 0; i < MAX_PAIRS; ++i) {
+            if (!pairs[i].active) continue;
+            
+            pairs[i].x += pairs[i].dir * pairs[i].speed;
+            
+            // Draw pair of obstacles (one on line1, one on line2)
+            for (int pairIdx = 0; pairIdx < 2; ++pairIdx) {
+                int obstacleY = (pairIdx == 0) ? pairs[i].line1 : pairs[i].line2;
+                
+                // Draw 3x3 obstacle
+                for (int oy = 0; oy < 3; ++oy) {
+                    for (int ox = 0; ox < 3; ++ox) {
+                        int drawX = pairs[i].x + ox;
+                        int drawY = LINE_Y[obstacleY] + oy - 1;
+                        if (drawX >= 0 && drawX < 120 && drawY >= 0 && drawY < 30) {
+                            Disp.wDisplay[drawY * 120 + drawX].Char.AsciiChar = '#';
+                            Disp.wDisplay[drawY * 120 + drawX].Attributes = joinColor(WHITE, WHITE);
+                        }
+                    }
+                }
+                
+                // Collision check (3x3 obstacle vs 4x2 soul)
+                if (collides(pairs[i].x, 3, LINE_Y[obstacleY] - 1, 3, playerX, 4, LINE_Y[currentLine], 2)) {
+                    if (invTimer == 0) {
+                        lives--;
+                        invTimer = INV_FRAMES;
+                        if (lives <= 0) {
+                            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            // Remove if off-screen
+            if (pairs[i].x + 3 < 0 || pairs[i].x > 119) {
+                pairs[i].active = false;
+            }
+        }
+        
+        // Debug keys
+        if (input('K')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameWin();
+            return;
+        }
+        if (input('J')) {
+            for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+            gameOver();
+            return;
+        }
+        if (input(VK_ESCAPE)) exit(0);
+        
+        frameCount++;
+        minigame3Counter++;
+        Disp.OutPut();
+        Sleep(50);
+    }
+    
+    if (!inLevel) return;
+    
+    // Victory
+    for (int a = 0; a < 4*2; ++a) soul.Colors[a] = savedSoulColors[a];
+    gameWin();
 }
 
 void runLevel5() {
